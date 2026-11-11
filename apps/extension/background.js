@@ -39,9 +39,20 @@ async function syncAcceptedSubmission(submission) {
   }
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "DSAHUB_PAGE_CONTEXT" && message.payload) {
     chrome.storage.local.set({ lastPageContext: message.payload });
+    if (message.payload.platform === "leetcode" && Number.isInteger(sender.tab?.id)) {
+      chrome.scripting.executeScript({
+        target: { tabId: sender.tab.id },
+        world: "MAIN",
+        files: ["interceptor.js"]
+      }).catch((error) => {
+        chrome.storage.local.set({
+          lastSyncStatus: error instanceof Error ? "Could not install LeetCode observer: " + error.message : "Could not install LeetCode observer."
+        });
+      });
+    }
     return;
   }
 
