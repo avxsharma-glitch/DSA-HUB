@@ -9,9 +9,36 @@ import { getDatabase } from "@/lib/mongodb";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function firstHeaderValue(value: string | null): string | null {
+  return value?.split(",")[0]?.trim() || null;
+}
+
 function isSameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  return origin !== null && origin === new URL(request.url).origin;
+  const originHeader = request.headers.get("origin");
+  if (!originHeader) return false;
+
+  try {
+    const origin = new URL(originHeader);
+    const requestUrl = new URL(request.url);
+
+    // Next.js may see an internal URL behind a reverse proxy. Prefer the
+    // public forwarded host/protocol, then fall back to the actual Host header.
+    const expectedHost =
+      firstHeaderValue(request.headers.get("x-forwarded-host")) ??
+      firstHeaderValue(request.headers.get("host")) ??
+      requestUrl.host;
+    const expectedProtocol =
+      firstHeaderValue(request.headers.get("x-forwarded-proto")) ??
+      requestUrl.protocol.replace(":", "");
+
+    return (
+      (origin.protocol === "http:" || origin.protocol === "https:") &&
+      origin.host.toLowerCase() === expectedHost.toLowerCase() &&
+      origin.protocol === expectedProtocol.toLowerCase() + ":"
+    );
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(request: Request) {
