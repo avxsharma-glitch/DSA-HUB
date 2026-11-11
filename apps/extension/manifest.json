@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "DSAHub Companion",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Capture accepted coding submissions and sync metadata to your DSAHub account.",
   "permissions": [
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
     "https://leetcode.com/*",
@@ -25,12 +26,6 @@
         "content.js"
       ],
       "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["interceptor.js"],
-      "matches": ["https://leetcode.com/*"]
     }
   ],
   "action": {
