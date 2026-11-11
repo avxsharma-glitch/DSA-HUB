@@ -6,6 +6,7 @@ import { signOutFromDashboard } from "./actions";
 import { ensureDataIndexes } from "@/lib/db/indexes";
 import type { SubmissionDocument, UserProfileDocument } from "@/lib/db/models";
 import { getDatabase } from "@/lib/mongodb";
+import { ExtensionTokenPanel } from "./extension-token-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,8 @@ export default async function DashboardPage() {
         </article>
       </section>
 
+      <ExtensionTokenPanel />
+
       <section className="section panel">
         <h2>Recent submissions</h2>
         {recentSubmissions.length === 0 ? (
@@ -75,7 +78,7 @@ export default async function DashboardPage() {
               <div className="rowitem" key={submission._id?.toString()}>
                 <div>
                   <strong>{submission.title}</strong>
-                  <div className="fine-print">{submission.platform} · {submission.language ?? "Language unavailable"}</div>
+                  <div className="fine-print">{submission.platform} · {submission.language ?? "Language unavailable"}{submission.runtimeMs !== undefined ? ` · ${submission.runtimeMs} ms` : ""}{submission.memoryKb !== undefined ? ` · ${(submission.memoryKb / 1024).toFixed(2)} MB` : ""}</div>
                 </div>
                 <span>{submission.difficulty ?? "Unspecified"}</span>
               </div>
