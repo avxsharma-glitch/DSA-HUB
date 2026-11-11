@@ -1,2 +1,28 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DSAHub</title><link rel="stylesheet" href="popup.css"></head><body><main><p class="brand">DSA<span>HUB</span></p><h1>Practice companion</h1><p id="status">Looking for a supported coding page…</p><script src="popup.js"></script></main></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DSAHub</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <p class="brand">DSA<span>HUB</span></p>
+    <h1>Practice companion</h1>
+    <section class="block">
+      <label for="apiBase">DSAHub server</label>
+      <input id="apiBase" type="url" value="http://localhost:3000" spellcheck="false">
+      <label for="token">Extension key</label>
+      <input id="token" type="password" placeholder="Paste key from your dashboard" autocomplete="off">
+      <button id="connect" type="button">Save connection</button>
+      <button id="disconnect" class="secondary" type="button">Disconnect this browser</button>
+    </section>
+    <p id="pageStatus" class="muted">Looking for a supported coding page…</p>
+    <p id="syncStatus" class="status" role="status" aria-live="polite">Not connected.</p>
+    <p id="lastSubmission" class="muted"></p>
+    <button id="retry" class="secondary" type="button">Retry last sync</button>
+    <script src="popup.js"></script>
+  </main>
+</body>
+</html>
