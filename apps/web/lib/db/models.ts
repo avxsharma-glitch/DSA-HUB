@@ -33,6 +33,14 @@ export interface ConnectedPlatformDocument extends Document {
   updatedAt: Date;
 }
 
+export interface ExtensionTokenDocument extends Document {
+  _id?: ObjectId;
+  userId: string;
+  tokenHash: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface SubmissionDocument extends Document {
   _id?: ObjectId;
   userId: string;
@@ -44,6 +52,10 @@ export interface SubmissionDocument extends Document {
   status: "Accepted";
   language?: string;
   difficulty?: Difficulty;
+  runtimeMs?: number;
+  memoryKb?: number;
+  totalCorrect?: number;
+  totalTestcases?: number;
   topics: string[];
   submittedAt: Date;
   createdAt: Date;
