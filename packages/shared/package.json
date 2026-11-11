@@ -1,0 +1,8 @@
+{
+  "name": "@dsahub/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/platform.mjs",
+  "types": "src/platform.d.mts",
+  "license": "Apache-2.0"
+}

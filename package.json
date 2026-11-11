@@ -1,0 +1,22 @@
+{
+  "name": "dsahub",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=26.0.0",
+    "npm": ">=11.0.0"
+  },
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @dsahub/web",
+    "build": "npm run build --workspace @dsahub/web",
+    "start": "npm run start --workspace @dsahub/web",
+    "typecheck": "npm run typecheck --workspace @dsahub/web",
+    "test": "node --test packages/shared/test/*.test.mjs",
+    "check": "npm run typecheck && npm test"
+  }
+}
