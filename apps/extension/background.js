@@ -40,6 +40,11 @@ async function syncAcceptedSubmission(submission) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "DSAHUB_OBSERVER_STATUS" && typeof message.status === "string") {
+    chrome.storage.local.set({ lastObserverStatus: message.status });
+    return;
+  }
+
   if (message?.type === "DSAHUB_PAGE_CONTEXT" && message.payload) {
     chrome.storage.local.set({ lastPageContext: message.payload });
     if (message.payload.platform === "leetcode" && Number.isInteger(sender.tab?.id)) {
