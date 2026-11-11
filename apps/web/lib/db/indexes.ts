@@ -51,6 +51,10 @@ export async function ensureDataIndexes(db: Db): Promise<void> {
       { userId: 1, platform: 1 },
       { unique: true, name: "connected_platform_user_unique" }
     ),
+    db.collection("extensionTokens").createIndex(
+      { userId: 1 },
+      { unique: true, name: "extension_token_user_unique" }
+    ),
     db.collection("submissions").createIndex(
       { userId: 1, platform: 1, externalSubmissionId: 1 },
       { unique: true, name: "submission_external_id_unique" }
