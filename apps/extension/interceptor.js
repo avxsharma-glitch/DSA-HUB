@@ -1,16 +1,14 @@
 (() => {
   const marker = "__dsahubLeetCodeInterceptorInstalled";
   if (window[marker]) {
-    window.postMessage({
-      source: "DSAHUB_LEETCODE_INTERCEPTOR",
-      type: "OBSERVER_READY"
-    }, window.location.origin);
+    window.postMessage({ source: "DSAHUB_LEETCODE_INTERCEPTOR", type: "OBSERVER_READY" }, window.location.origin);
     return;
   }
   window[marker] = true;
 
   const seenSubmissionIds = new Set();
   const checkPath = /\/submissions\/detail\/(\d+)(?:\/check)?\/?$/i;
+  const submitPath = /\/problems\/([^/]+)\/submit\/?$/i;
 
   function report(type, payload = {}) {
     window.postMessage({
@@ -20,7 +18,7 @@
     }, window.location.origin);
   }
 
-  function getSubmissionId(input) {
+  function getRequestInfo(input) {
     try {
       let rawUrl = input;
       if (typeof input !== "string") {
@@ -31,10 +29,31 @@
 
       const url = new URL(rawUrl, window.location.href);
       if (url.hostname !== "leetcode.com" && url.hostname !== "www.leetcode.com") return null;
-      return url.pathname.match(checkPath)?.[1] ?? null;
+
+      const checkMatch = url.pathname.match(checkPath);
+      if (checkMatch) return { kind: "check", submissionId: checkMatch[1] };
+      const submitMatch = url.pathname.match(submitPath);
+      if (submitMatch) return { kind: "submit", slug: submitMatch[1] };
+      return null;
     } catch {
       return null;
     }
+  }
+
+  function inspectSubmitResponse(data, slug) {
+    const result = data && typeof data === "object" && data.data && typeof data.data === "object"
+      ? data.data
+      : data;
+    const submissionId = result && (result.submission_id ?? result.submissionId);
+    if (submissionId === null || submissionId === undefined) {
+      report("SUBMIT_RESPONSE_WITHOUT_ID", { slug });
+      return;
+    }
+    report("SUBMISSION_ID_CREATED", {
+      submissionId: String(submissionId),
+      slug,
+      submittedAt: new Date().toISOString()
+    });
   }
 
   function inspectCheckResponse(submissionId, data) {
@@ -58,9 +77,14 @@
     seenSubmissionIds.add(submissionId);
     report("ACCEPTED_SUBMISSION", {
       submissionId,
-      language: typeof result.lang === "string" ? result.lang : null,
-      runtime: typeof result.runtime === "string" || typeof result.runtime === "number" ? result.runtime : null,
-      memory: typeof result.memory === "string" || typeof result.memory === "number" ? result.memory : null,
+      language: typeof result.pretty_lang === "string" ? result.pretty_lang :
+        (typeof result.lang === "string" ? result.lang : null),
+      runtime: typeof result.status_runtime === "string" || typeof result.status_runtime === "number"
+        ? result.status_runtime
+        : (typeof result.runtime === "string" || typeof result.runtime === "number" ? result.runtime : null),
+      memory: typeof result.status_memory === "string" || typeof result.status_memory === "number"
+        ? result.status_memory
+        : (typeof result.memory === "string" || typeof result.memory === "number" ? result.memory : null),
       totalCorrect: result.total_correct !== null && result.total_correct !== undefined &&
         Number.isSafeInteger(Number(result.total_correct)) ? Number(result.total_correct) : null,
       totalTestcases: result.total_testcases !== null && result.total_testcases !== undefined &&
@@ -69,19 +93,24 @@
     });
   }
 
+  function inspectResponse(kind, response, slug, submissionId) {
+    if (!response?.ok) return;
+    response.clone().json().then((data) => {
+      if (kind === "submit") inspectSubmitResponse(data, slug);
+      if (kind === "check") inspectCheckResponse(submissionId, data);
+    }).catch(() => report("OBSERVER_RESPONSE_PARSE_FAILED", { kind, slug, submissionId }));
+  }
+
   report("OBSERVER_READY");
 
   const originalFetch = window.fetch;
   window.fetch = async function (...args) {
-    const submissionId = getSubmissionId(args[0]);
-    if (submissionId) report("SUBMISSION_CHECK_REQUEST", { submissionId });
+    const info = getRequestInfo(args[0]);
+    if (info?.kind === "submit") report("SUBMIT_REQUEST", { slug: info.slug });
+    if (info?.kind === "check") report("SUBMISSION_CHECK_REQUEST", { submissionId: info.submissionId });
 
     const response = await Reflect.apply(originalFetch, this, args);
-    if (submissionId && response.ok) {
-      response.clone().json()
-        .then((data) => inspectCheckResponse(submissionId, data))
-        .catch(() => report("OBSERVER_RESPONSE_PARSE_FAILED", { submissionId }));
-    }
+    if (info) inspectResponse(info.kind, response, info.slug, info.submissionId);
     return response;
   };
 
@@ -89,20 +118,23 @@
   const originalSend = XMLHttpRequest.prototype.send;
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    this.__dsahubSubmissionId = getSubmissionId(url);
+    this.__dsahubRequestInfo = getRequestInfo(url);
     return Reflect.apply(originalOpen, this, [method, url, ...rest]);
   };
 
   XMLHttpRequest.prototype.send = function (...args) {
-    const submissionId = this.__dsahubSubmissionId;
-    if (submissionId) {
-      report("SUBMISSION_CHECK_REQUEST", { submissionId });
+    const info = this.__dsahubRequestInfo;
+    if (info?.kind === "submit") report("SUBMIT_REQUEST", { slug: info.slug });
+    if (info?.kind === "check") report("SUBMISSION_CHECK_REQUEST", { submissionId: info.submissionId });
+
+    if (info) {
       this.addEventListener("load", () => {
         try {
           const data = this.responseType === "json" ? this.response : JSON.parse(this.responseText);
-          inspectCheckResponse(submissionId, data);
+          if (info.kind === "submit") inspectSubmitResponse(data, info.slug);
+          if (info.kind === "check") inspectCheckResponse(info.submissionId, data);
         } catch {
-          report("OBSERVER_RESPONSE_PARSE_FAILED", { submissionId });
+          report("OBSERVER_RESPONSE_PARSE_FAILED", info);
         }
       }, { once: true });
     }
