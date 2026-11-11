@@ -66,11 +66,6 @@
 
   if (!isLeetCode) return;
 
-  const interceptor = document.createElement("script");
-  interceptor.src = chrome.runtime.getURL("interceptor.js");
-  interceptor.onload = () => interceptor.remove();
-  (document.head || document.documentElement).appendChild(interceptor);
-
   const seen = new Set();
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== location.origin) return;
