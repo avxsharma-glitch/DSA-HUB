@@ -2,89 +2,78 @@
 
 **Solve. Track. Sync. Improve.**
 
-DSAHub is an open-source workspace for tracking Data Structures & Algorithms practice across coding platforms. The long-term product combines a web dashboard, a privacy-first browser extension, platform adapters, and user-controlled GitHub synchronization.
+DSAHub is an open-source workspace for tracking Data Structures & Algorithms practice across coding platforms. The project combines a web dashboard, a browser extension, platform adapters, MongoDB Atlas, and user-controlled GitHub synchronization.
 
-> **Foundation status:** early development. The dashboard is a UI preview, and the extension is a starter that detects supported coding sites. Real submission parsing, user accounts, persistent analytics, and GitHub synchronization are not implemented yet. Preview metrics are illustrative and are not real user activity.
+> **Status:** early development. GitHub OAuth, database-backed sessions, the initial MongoDB data architecture, protected submission APIs, and a real-data dashboard foundation are being implemented. Automated platform submission capture and GitHub solution sync are still planned.
 
 ## Principles
 
 - Fully open source under Apache-2.0.
-- Both hosted and self-hosted deployment paths.
+- Hosted and self-hosted deployment paths.
 - MongoDB Atlas for persistent storage.
-- User-controlled solution synchronization.
-- Least-privilege access to coding platforms and GitHub.
+- Every user's data is scoped to their authenticated account.
+- Basic GitHub identity scopes for sign-in; repository permissions are a separate future integration.
 
 ## Stack
 
 - Next.js + React + TypeScript
-- Tailwind CSS
+- Auth.js (NextAuth.js v5) with GitHub OAuth
+- Auth.js MongoDB adapter and database sessions
 - MongoDB Atlas (official Node.js driver)
 - Chrome Extension Manifest V3
 - Docker Compose for self-hosting
 
-## Repository layout
-
-- `apps/web` — Next.js dashboard and API.
-- `apps/extension` — Chrome extension starter.
-- `packages/shared` — shared platform types.
-- `docs` — architecture, Atlas setup, deployment and roadmap.
-
-## Requirements
-
-- Node.js 26.x and npm 11+
-- MongoDB Atlas cluster and database user
-- Git
-- Docker Desktop (optional)
-
 ## Local setup
 
-```powershell
+Requirements: Node.js 26.x, npm 11+, Git, and a MongoDB Atlas cluster.
+
+~~~powershell
 git clone https://github.com/avxsharma-glitch/DSA-HUB.git
 cd DSA-HUB
 npm install
-Copy-Item .env.example .env
-```
+Copy-Item .env.example apps/web/.env.local
+~~~
 
-Set `MONGODB_URI` in `.env` to your MongoDB Atlas connection string and `MONGODB_DB=dsahub`, then run:
+Create a GitHub OAuth App and configure the required secrets in apps/web/.env.local. Follow [GitHub authentication setup](docs/AUTH_SETUP.md). Preserve your existing MongoDB Atlas connection string.
 
-```powershell
+Start the app:
+
+~~~powershell
 npm run dev
-```
+~~~
 
-Open http://localhost:3000. The health endpoint is at http://localhost:3000/api/health. See [MongoDB Atlas setup](docs/MONGODB_ATLAS_SETUP.md).
+Open http://localhost:3000. Health check: http://localhost:3000/api/health.
 
-## Self-host with Docker
+## Authentication and dashboard
 
-Configure `.env` with your Atlas URI, then run `docker compose up --build -d`. Docker Compose runs the web application; database storage remains in Atlas. It does not start a local MongoDB container.
+- Sign-in page: /login
+- Protected dashboard: /dashboard
+- Current user API: /api/me
+- User-scoped submissions API: /api/submissions
+- User-scoped stats API: /api/stats
+
+The API derives user identity from the server-side Auth.js session. It ignores no userId field supplied by clients; userId is not accepted in the submission payload. Submission code is not stored by this MVP.
+
+## MongoDB architecture
+
+Auth.js uses users, accounts, sessions, and verification_tokens. DSAHub uses profiles, connectedPlatforms, submissions, githubSyncRecords, and goals. See [Data model](docs/DATA_MODEL.md).
+
+## Useful commands
+
+- npm run dev — local development server
+- npm run build — production build
+- npm run typecheck — TypeScript validation
+- npm test — shared-package tests
+- npm run check — typecheck and tests
+- docker compose up --build — self-hosted web app using Atlas
 
 ## Browser extension
 
-Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `apps/extension`. Current functionality is limited to detecting supported pages and storing page context locally; it does not capture source code or sync submissions yet.
-
-## Commands
-
-- `npm run dev` — local development server
-- `npm run build` — production build
-- `npm run typecheck` — TypeScript validation
-- `npm test` — shared package tests
-- `npm run check` — typecheck and tests
-
-## Project status
-
-| Area | Status |
-|---|---|
-| Monorepo foundation | Scaffolded |
-| Dashboard UI | Preview only |
-| MongoDB Atlas connection | Implemented |
-| Health endpoint | Implemented |
-| Chrome extension starter | Implemented |
-| Accepted-submission detection | Planned |
-| Real submission persistence | Planned |
-| GitHub App authorization and sync | Planned |
-| Multi-platform analytics | Planned |
+Load the unpacked extension from apps/extension using Chrome's Extensions page with Developer mode enabled. The current extension is a starter; accepted-submission capture is not implemented yet.
 
 ## Documentation
 
+- [Authentication setup](docs/AUTH_SETUP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data model](docs/DATA_MODEL.md)
 - [Atlas setup](docs/MONGODB_ATLAS_SETUP.md)
@@ -95,8 +84,8 @@ Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and
 
 ## Contributing
 
-Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. Report security vulnerabilities privately as explained in [SECURITY.md](SECURITY.md).
+Issues and pull requests are welcome. Read CONTRIBUTING.md before contributing. Report security vulnerabilities privately as explained in SECURITY.md.
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache License 2.0. See LICENSE.

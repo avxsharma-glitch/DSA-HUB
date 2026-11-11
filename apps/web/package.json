@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@auth/mongodb-adapter": "3.11.3",
     "@dsahub/shared": "0.1.0",
     "mongodb": "^7.8.0",
     "next": "^16.4.6",
+    "next-auth": "5.0.0-beta.32",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
