@@ -112,13 +112,28 @@
       return;
     }
 
+    if (event.data.type === "SUBMIT_REQUEST") {
+      sendStatus("LeetCode Submit request detected. Waiting for submission ID and judge result…");
+      return;
+    }
+
+    if (event.data.type === "SUBMISSION_ID_CREATED") {
+      sendStatus("LeetCode assigned submission ID " + String(event.data.payload?.submissionId || "") + ". Waiting for the judge result…");
+      return;
+    }
+
     if (event.data.type === "SUBMISSION_CHECK_REQUEST") {
-      sendStatus("LeetCode submission request detected. Waiting for the judge result…");
+      sendStatus("LeetCode submission-check request detected. Waiting for the judge result…");
       return;
     }
 
     if (event.data.type === "SUBMISSION_CHECK_RESULT") {
       sendStatus("LeetCode judge response: " + String(event.data.payload?.status || "Processing"));
+      return;
+    }
+
+    if (event.data.type === "SUBMIT_RESPONSE_WITHOUT_ID") {
+      sendStatus("LeetCode received the Submit request, but no submission ID was present in its response.");
       return;
     }
 
