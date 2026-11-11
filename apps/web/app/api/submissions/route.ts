@@ -24,6 +24,10 @@ function serializeSubmission(submission: SubmissionDocument) {
     status: submission.status,
     language: submission.language ?? null,
     difficulty: submission.difficulty ?? null,
+    runtimeMs: submission.runtimeMs ?? null,
+    memoryKb: submission.memoryKb ?? null,
+    totalCorrect: submission.totalCorrect ?? null,
+    totalTestcases: submission.totalTestcases ?? null,
     topics: submission.topics,
     submittedAt: submission.submittedAt.toISOString(),
     createdAt: submission.createdAt.toISOString()
