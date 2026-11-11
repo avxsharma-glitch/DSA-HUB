@@ -4,7 +4,7 @@
 
 DSAHub is an open-source workspace for tracking Data Structures & Algorithms practice across coding platforms. The project combines a web dashboard, a browser extension, platform adapters, MongoDB Atlas, and user-controlled GitHub synchronization.
 
-> **Status:** early development. GitHub OAuth, database-backed sessions, protected submission APIs, a user-scoped dashboard, and the first LeetCode accepted-submission capture path are available. The browser extension currently captures accepted LeetCode submission metadata only; GeeksforGeeks capture, broader analytics, and GitHub solution sync remain future work.
+> **Status:** early development. GitHub OAuth, database-backed sessions, protected submission APIs, a user-scoped dashboard, and the first LeetCode accepted-submission capture path are available. The first LeetCode accepted-submission metadata capture and sync path is implemented and is awaiting real-browser validation; GeeksforGeeks capture, broader analytics, and GitHub solution sync remain future work.
 
 ## Principles
 
