@@ -19,7 +19,8 @@ The application does not expose account documents or provider access tokens thro
 |---|---|---|
 | profiles | userId, preferences, privacy | App-specific profile settings |
 | connectedPlatforms | userId, platform, externalUsername | Coding-platform handles and connection state |
-| submissions | userId, platform, externalSubmissionId, problemId, submittedAt | Accepted problem submissions |
+| extensionTokens | userId, tokenHash, createdAt, updatedAt | One revocable browser-extension key per user; only the SHA-256 hash is stored |
+| submissions | userId, platform, externalSubmissionId, problemId, submittedAt, language, runtimeMs, memoryKb | Accepted problem metadata and optional performance metrics |
 | githubSyncRecords | userId, submissionId, repositoryFullName, filePath, status | Future solution synchronization history |
 | goals | userId, period, targetSolved, startsAt, endsAt, isActive | Daily and weekly targets |
 
@@ -29,6 +30,7 @@ The application does not expose account documents or provider access tokens thro
 - The API never accepts userId from the request body.
 - Reads and writes filter by the current session user ID.
 - The unique submission index is userId + platform + externalSubmissionId.
+- The extension ingestion endpoint resolves user ownership from a hashed bearer token; it never accepts userId from the extension payload.
 - Duplicate accepted submissions are idempotently rejected.
 - Submission metadata is stored separately from any future source-code storage. This MVP does not store solution source code.
 
@@ -39,6 +41,7 @@ The application does not expose account documents or provider access tokens thro
 - Auth.js verification tokens: identifier + token (unique), expires (TTL).
 - Profiles: userId (unique).
 - Connected platforms: userId + platform (unique).
+- Extension tokens: userId (unique).
 - Submissions: userId + platform + externalSubmissionId (unique), and userId + submittedAt (descending).
 - GitHub sync records: userId + createdAt (descending).
 - Goals: userId + isActive.
