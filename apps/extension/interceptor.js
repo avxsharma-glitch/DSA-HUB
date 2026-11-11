@@ -31,6 +31,11 @@
       type: "ACCEPTED_SUBMISSION",
       payload: {
         submissionId,
+        language: typeof data.lang === "string" ? data.lang : null,
+        runtime: typeof data.runtime === "string" || typeof data.runtime === "number" ? data.runtime : null,
+        memory: typeof data.memory === "string" || typeof data.memory === "number" ? data.memory : null,
+        totalCorrect: Number.isFinite(Number(data.total_correct)) ? Number(data.total_correct) : null,
+        totalTestcases: Number.isFinite(Number(data.total_testcases)) ? Number(data.total_testcases) : null,
         submittedAt: new Date().toISOString()
       }
     }, window.location.origin);
