@@ -36,7 +36,7 @@
     const match = String(value).match(/[0-9]+(?:\.[0-9]+)?/);
     if (!match) return undefined;
     const amount = Number(match[0]);
-    return /\s*(?:sec(?:ond)?s?|s)$/i.test(String(value).trim()) && !/ms$/i.test(String(value).trim()).test(String(value).trim()) ? Math.round(amount * 1000) : Math.round(amount);
+    return /\s*(?:sec(?:ond)?s?|s)$/i.test(String(value).trim()) && !/ms$/i.test(String(value).trim()) ? Math.round(amount * 1000) : Math.round(amount);
   }
 
   function parseMemoryKb(value) {
