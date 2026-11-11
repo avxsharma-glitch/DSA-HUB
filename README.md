@@ -4,7 +4,7 @@
 
 DSAHub is an open-source workspace for tracking Data Structures & Algorithms practice across coding platforms. The project combines a web dashboard, a browser extension, platform adapters, MongoDB Atlas, and user-controlled GitHub synchronization.
 
-> **Status:** early development. GitHub OAuth, database-backed sessions, the initial MongoDB data architecture, protected submission APIs, and a real-data dashboard foundation are being implemented. Automated platform submission capture and GitHub solution sync are still planned.
+> **Status:** early development. GitHub OAuth, database-backed sessions, protected submission APIs, a user-scoped dashboard, and the first LeetCode accepted-submission capture path are available. The browser extension currently captures accepted LeetCode submission metadata only; GeeksforGeeks capture, broader analytics, and GitHub solution sync remain future work.
 
 ## Principles
 
@@ -13,6 +13,7 @@ DSAHub is an open-source workspace for tracking Data Structures & Algorithms pra
 - MongoDB Atlas for persistent storage.
 - Every user's data is scoped to their authenticated account.
 - Basic GitHub identity scopes for sign-in; repository permissions are a separate future integration.
+- Submission source code is not collected or stored by this MVP.
 
 ## Stack
 
@@ -51,12 +52,14 @@ Open http://localhost:3000. Health check: http://localhost:3000/api/health.
 - Current user API: /api/me
 - User-scoped submissions API: /api/submissions
 - User-scoped stats API: /api/stats
+- Extension key API: /api/extension-token
+- Extension ingestion API: /api/extension-submissions
 
-The API derives user identity from the server-side Auth.js session. It ignores no userId field supplied by clients; userId is not accepted in the submission payload. Submission code is not stored by this MVP.
+The normal submissions API derives user identity from the server-side Auth.js session. The extension endpoint derives user identity from a per-account bearer key whose SHA-256 hash is stored in MongoDB. Neither API accepts a client-supplied userId. Only accepted-submission metadata is stored; submitted source code and test-case contents are not collected by this extension flow.
 
 ## MongoDB architecture
 
-Auth.js uses users, accounts, sessions, and verification_tokens. DSAHub uses profiles, connectedPlatforms, submissions, githubSyncRecords, and goals. See [Data model](docs/DATA_MODEL.md).
+Auth.js uses users, accounts, sessions, and verification_tokens. DSAHub uses profiles, connectedPlatforms, extensionTokens, submissions, githubSyncRecords, and goals. See [Data model](docs/DATA_MODEL.md).
 
 ## Useful commands
 
@@ -69,11 +72,20 @@ Auth.js uses users, accounts, sessions, and verification_tokens. DSAHub uses pro
 
 ## Browser extension
 
-Load the unpacked extension from apps/extension using Chrome's Extensions page with Developer mode enabled. The current extension is a starter; accepted-submission capture is not implemented yet.
+1. Load the unpacked extension from apps/extension in Chrome at chrome://extensions with Developer mode enabled.
+2. Sign in to DSAHub and open /dashboard.
+3. In the Browser extension panel, generate an extension key and copy it immediately.
+4. Open the DSAHub Companion popup, paste the key, and save the connection.
+5. Open or reload a LeetCode problem page. Submit a solution. On an Accepted result, the extension sends metadata to the local DSAHub server.
+
+For the current local-development build, the extension targets http://localhost:3000. Reload the extension after pulling updates. Existing accepted submissions are not backfilled; detection starts after the observer is installed. DOM/API changes on LeetCode may require adapter updates.
+
+Captured fields include problem slug/title/URL, accepted status, LeetCode submission ID, language, submission timestamp, runtime and memory when present, and test-case counts when present. Solution code, input data, and output data are not stored. GeeksforGeeks page detection is present, but accepted-submission syncing for that platform is not implemented yet.
 
 ## Documentation
 
 - [Authentication setup](docs/AUTH_SETUP.md)
+- [Extension setup and data collected](docs/EXTENSION_SETUP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data model](docs/DATA_MODEL.md)
 - [Atlas setup](docs/MONGODB_ATLAS_SETUP.md)
