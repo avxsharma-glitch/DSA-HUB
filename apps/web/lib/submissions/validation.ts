@@ -9,6 +9,10 @@ export interface NewSubmissionInput {
   status: "Accepted";
   language?: string;
   difficulty?: Difficulty;
+  runtimeMs?: number;
+  memoryKb?: number;
+  totalCorrect?: number;
+  totalTestcases?: number;
   topics: string[];
   submittedAt: Date;
 }
@@ -26,6 +30,10 @@ const allowedKeys = new Set([
   "status",
   "language",
   "difficulty",
+  "runtimeMs",
+  "memoryKb",
+  "totalCorrect",
+  "totalTestcases",
   "topics",
   "submittedAt"
 ]);
@@ -36,6 +44,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown, maxLength: number): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.trim().length <= maxLength;
+}
+
+function optionalNonNegativeNumber(value: unknown, max: number, field: string): number | undefined | string {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > max) {
+    return field + " must be a non-negative number within the allowed range.";
+  }
+  return value;
 }
 
 export function validateNewSubmission(value: unknown): ValidationResult {
@@ -103,6 +119,17 @@ export function validateNewSubmission(value: unknown): ValidationResult {
     difficulty = value.difficulty;
   }
 
+  const runtimeMs = optionalNonNegativeNumber(value.runtimeMs, 3_600_000, "runtimeMs");
+  const memoryKb = optionalNonNegativeNumber(value.memoryKb, 10_000_000, "memoryKb");
+  const totalCorrect = optionalNonNegativeNumber(value.totalCorrect, 1_000_000, "totalCorrect");
+  const totalTestcases = optionalNonNegativeNumber(value.totalTestcases, 1_000_000, "totalTestcases");
+  for (const metric of [runtimeMs, memoryKb, totalCorrect, totalTestcases]) {
+    if (typeof metric === "string") return { success: false, error: metric };
+  }
+  if (typeof totalCorrect === "number" && typeof totalTestcases === "number" && totalCorrect > totalTestcases) {
+    return { success: false, error: "totalCorrect cannot exceed totalTestcases." };
+  }
+
   let topics: string[] = [];
   if (value.topics !== undefined) {
     if (!Array.isArray(value.topics) || value.topics.length > 20) {
@@ -139,6 +166,10 @@ export function validateNewSubmission(value: unknown): ValidationResult {
       status: "Accepted",
       language,
       difficulty,
+      runtimeMs: typeof runtimeMs === "number" ? runtimeMs : undefined,
+      memoryKb: typeof memoryKb === "number" ? memoryKb : undefined,
+      totalCorrect: typeof totalCorrect === "number" ? totalCorrect : undefined,
+      totalTestcases: typeof totalTestcases === "number" ? totalTestcases : undefined,
       topics,
       submittedAt
     }
