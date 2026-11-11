@@ -1,4 +1,5 @@
 const pageStatus = document.getElementById("pageStatus");
+const observerStatus = document.getElementById("observerStatus");
 const syncStatus = document.getElementById("syncStatus");
 const lastSubmission = document.getElementById("lastSubmission");
 const apiBaseInput = document.getElementById("apiBase");
@@ -14,7 +15,9 @@ function renderState(data) {
     pageStatus.textContent = "Open a LeetCode problem to detect the current page.";
   }
 
+  observerStatus.textContent = data.lastObserverStatus || "Observer has not reported a status yet.";
   syncStatus.textContent = data.lastSyncStatus || (data.extensionToken ? "Extension key saved." : "Not connected.");
+
   if (data.lastAcceptedSubmission) {
     const item = data.lastAcceptedSubmission;
     lastSubmission.textContent = "Last accepted: " + item.title + (item.language ? " · " + item.language : "");
@@ -26,10 +29,12 @@ function renderState(data) {
   tokenInput.placeholder = data.extensionToken ? "Key saved (enter a new key to replace)" : "Paste key from your dashboard";
 }
 
-chrome.storage.local.get(
-  ["lastPageContext", "lastSyncStatus", "lastAcceptedSubmission", "extensionToken", "apiBase"],
-  renderState
-);
+const stateKeys = ["lastPageContext", "lastObserverStatus", "lastSyncStatus", "lastAcceptedSubmission", "extensionToken", "apiBase"];
+chrome.storage.local.get(stateKeys, renderState);
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local") return;
+  chrome.storage.local.get(stateKeys, renderState);
+});
 
 connectButton.addEventListener("click", async () => {
   const token = tokenInput.value.trim();
