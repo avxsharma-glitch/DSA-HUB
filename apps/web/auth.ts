@@ -44,6 +44,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   events: {
     async createUser({ user }) {
+      // The adapter normally supplies an ID. Guard the optional base User type.
+      if (!user.id) return;
+
       const db = await getDatabase();
       await ensureDataIndexes(db);
 
