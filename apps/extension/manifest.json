@@ -1,14 +1,16 @@
 {
   "manifest_version": 3,
   "name": "DSAHub Companion",
-  "version": "0.1.0",
-  "description": "A browser companion for your DSA practice workspace.",
+  "version": "0.2.0",
+  "description": "Capture accepted coding submissions and sync metadata to your DSAHub account.",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
     "https://leetcode.com/*",
-    "https://www.geeksforgeeks.org/*"
+    "https://www.geeksforgeeks.org/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,6 +25,12 @@
         "content.js"
       ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["interceptor.js"],
+      "matches": ["https://leetcode.com/*"]
     }
   ],
   "action": {
