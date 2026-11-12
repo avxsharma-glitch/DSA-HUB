@@ -87,9 +87,16 @@ export async function POST(request: Request) {
       branch: settings.branch
     });
 
-    if (existingFileSha && !existingRecord) {
+    const recordOwnsThisPath = Boolean(
+      existingRecord &&
+      existingRecord.repositoryId === settings.repositoryId &&
+      existingRecord.repositoryFullName === settings.repositoryFullName &&
+      existingRecord.branch === settings.branch &&
+      existingRecord.filePath === filePath
+    );
+    if (existingFileSha && !recordOwnsThisPath) {
       return NextResponse.json({
-        error: "A file already exists at " + filePath + ". DSAHub will not overwrite a file it did not create."
+        error: "A file already exists at " + filePath + ". DSAHub will not overwrite a file unless its sync record matches this exact repository, branch and path."
       }, { status: 409 });
     }
 
