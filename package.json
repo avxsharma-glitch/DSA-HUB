@@ -16,7 +16,7 @@
     "build": "npm run build --workspace @dsahub/web",
     "start": "npm run start --workspace @dsahub/web",
     "typecheck": "npm run typecheck --workspace @dsahub/web",
-    "test": "node --test packages/shared/test/*.test.mjs",
+    "test": "node --test packages/shared/test/*.test.mjs apps/extension/test/*.test.mjs",
     "check": "npm run typecheck && npm test"
   }
 }
