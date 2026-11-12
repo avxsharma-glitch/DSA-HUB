@@ -36,6 +36,11 @@ export default async function DashboardPage() {
     <main className="shell">
       <header className="topbar">
         <Link className="brand" href="/">DSA<span>HUB</span></Link>
+        <nav className="product-nav">
+          <Link className="active" href="/dashboard">Overview</Link>
+          <Link href="/analytics">Analytics</Link>
+          <Link href="/github-sync">GitHub Sync</Link>
+        </nav>
         <form action={signOutFromDashboard}>
           <button className="secondary-btn" type="submit">Sign out</button>
         </form>
