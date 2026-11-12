@@ -52,13 +52,25 @@ export async function POST(request: Request) {
     if (installation.app_id !== Number(process.env.GITHUB_APP_ID)) {
       return NextResponse.json({ error: "This installation belongs to a different GitHub App." }, { status: 403 });
     }
-    if (!installation.account?.login || (installation.account.type !== "User" && installation.account.type !== "Organization")) {
+
+    // Bind a personal installation to the GitHub identity that authenticated
+    // this DSAHub session. This prevents another DSAHub user from claiming a
+    // guessed installation ID that belongs to someone else.
+    const db = await getDatabase();
+    await ensureDataIndexes(db);
+    const githubAccount = await db.collection<{ providerAccountId: string; provider: string; userId: string }>("accounts")
+      .findOne({ userId: user.id, provider: "github" });
+    if (!githubAccount || installation.account.type !== "User" ||
+        String(installation.account.id) !== String(githubAccount.providerAccountId)) {
+      return NextResponse.json({
+        error: "For security, this version supports personal GitHub App installations belonging to the GitHub account you used to sign in. Organization installations are not supported yet."
+      }, { status: 403 });
+    }
+    if (!installation.account?.login) {
       return NextResponse.json({ error: "GitHub did not return a supported installation account." }, { status: 422 });
     }
 
     const now = new Date();
-    const db = await getDatabase();
-    await ensureDataIndexes(db);
     await db.collection<GithubInstallationDocument>("githubInstallations").updateOne(
       { userId: user.id },
       {
