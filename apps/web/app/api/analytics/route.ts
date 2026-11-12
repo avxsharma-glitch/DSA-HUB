@@ -61,7 +61,10 @@ export async function GET(request: Request) {
   const range: RangeKey = requestedRange === "7d" || requestedRange === "90d" || requestedRange === "365d"
     ? requestedRange
     : "30d";
-  const platformFilter = url.searchParams.get("platform") ?? "all";
+  const requestedPlatform = url.searchParams.get("platform") ?? "all";
+  const platformFilter = requestedPlatform === "leetcode" || requestedPlatform === "geeksforgeeks"
+    ? requestedPlatform
+    : "all";
   const now = new Date();
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const days = Number(range.slice(0, -1));
@@ -122,11 +125,15 @@ export async function GET(request: Request) {
     return { date: key, count: dailyCounts.get(key) ?? 0 };
   });
 
+  const heatmapCounts = new Map<string, number>();
+  for (const item of filtered) {
+    const key = utcKey(item.submittedAt);
+    heatmapCounts.set(key, (heatmapCounts.get(key) ?? 0) + 1);
+  }
   const heatmap = Array.from({ length: 365 }, (_, index) => {
     const date = addUtcDays(heatmapStart, index);
     const key = utcKey(date);
-    const count = filtered.filter((item) => utcKey(item.submittedAt) === key).length;
-    return { date: key, count };
+    return { date: key, count: heatmapCounts.get(key) ?? 0 };
   });
 
   const todayKey = utcKey(today);
