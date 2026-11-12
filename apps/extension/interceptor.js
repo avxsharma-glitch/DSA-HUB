@@ -1,15 +1,10 @@
 (() => {
   const marker = "__dsahubLeetCodeInterceptorInstalled";
-  if (window[marker]) {
-    window.postMessage({ source: "DSAHUB_LEETCODE_INTERCEPTOR", type: "OBSERVER_READY" }, window.location.origin);
+  const U = globalThis.DSAHubInterceptorUtils;
+  if (!U) {
+    console.error("[DSAHub] LeetCode interceptor helpers are missing.");
     return;
   }
-  window[marker] = true;
-
-  const seenSubmissionIds = new Set();
-  const submissionSlugById = new Map();
-  const checkPath = /\/submissions\/detail\/(\d+)\/(?:v\d+\/)?check\/?$/i;
-  const submitPath = /\/problems\/([^/]+)\/submit\/?$/i;
 
   function report(type, payload = {}) {
     window.postMessage({
@@ -19,19 +14,24 @@
     }, window.location.origin);
   }
 
-  function parseSubmitBody(body) {
-    if (!body) return null;
-    if (typeof body === "object" && !(body instanceof FormData)) return body;
-    if (typeof body !== "string") return null;
-    try {
-      const parsed = JSON.parse(body);
-      return parsed && typeof parsed === "object" ? parsed : null;
-    } catch {
-      return null;
-    }
+  if (window[marker]) {
+    report("OBSERVER_READY");
+    return;
+  }
+  window[marker] = true;
+
+  const seenSubmissionIds = new Set();
+  const slugBySubmissionId = new Map();
+  let latestSubmission = null;
+
+  const submitPath = /\/problems\/([a-z0-9-]+)\/submit\/?$/i;
+  const checkPath = /\/submissions\/detail\/(\d+)\/(?:v\d+\/)?check\/?$/i;
+
+  function currentSlug() {
+    return U.slugFromPath(location.pathname);
   }
 
-  function getRequestInfo(input, init) {
+  function getRequestMeta(input, init) {
     try {
       let rawUrl = input;
       if (typeof input !== "string") {
@@ -40,81 +40,109 @@
       }
       if (typeof rawUrl !== "string") return null;
 
-      const url = new URL(rawUrl, window.location.href);
+      const url = new URL(rawUrl, location.href);
       if (url.hostname !== "leetcode.com" && url.hostname !== "www.leetcode.com") return null;
+      const method = String(
+        init?.method || (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET")
+      ).toUpperCase();
 
       const checkMatch = url.pathname.match(checkPath);
-      if (checkMatch) return { kind: "check", submissionId: checkMatch[1] };
+      if (checkMatch) return { kind: "check", method, submissionId: checkMatch[1], pathname: url.pathname };
 
       const submitMatch = url.pathname.match(submitPath);
-      if (submitMatch) return { kind: "submit", slug: submitMatch[1] };
-
-      // Fallback for LeetCode endpoint path changes: identify only the
-      // submit request shape, without reading or forwarding the code value.
-      const method = String(init?.method || "GET").toUpperCase();
-      if (method === "POST") {
-        const body = parseSubmitBody(init?.body);
-        const hasCodeField = body && ("typed_code" in body || "code" in body);
-        const hasLanguageField = body && ("lang" in body || "lang_id" in body);
-        const problemMatch = window.location.pathname.match(/\/problems\/([^/]+)/);
-        if (hasCodeField && hasLanguageField && problemMatch) {
-          return { kind: "submit", slug: problemMatch[1] };
-        }
+      if (submitMatch && method === "POST") {
+        return { kind: "submit", method, slug: submitMatch[1], pathname: url.pathname };
       }
-      return null;
+
+      return { kind: "other", method, pathname: url.pathname };
     } catch {
       return null;
     }
   }
 
-  function unwrapResponse(data) {
-    if (!data || typeof data !== "object") return data;
-    if (data.data && typeof data.data === "object") return data.data;
-    return data;
+  async function getFetchBodyText(input, init) {
+    if (typeof init?.body === "string") return init.body;
+    if (typeof Request !== "undefined" && input instanceof Request) {
+      try {
+        return await input.clone().text();
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function recognizeSubmitBody(bodyText, fallbackSlug) {
+    const body = typeof bodyText === "string" ? U.safeJsonParse(bodyText) : null;
+    if (!U.looksLikeSubmitBody(body)) return null;
+
+    const slug = fallbackSlug || currentSlug();
+    if (!slug) return null;
+    latestSubmission = { slug, submittedAt: new Date().toISOString(), submissionId: null };
+    report("SUBMIT_REQUEST", { slug });
+    return slug;
   }
 
   function inspectSubmitResponse(data, slug) {
-    const result = unwrapResponse(data);
-    const submissionId = result && (result.submission_id ?? result.submissionId);
-    if (submissionId === null || submissionId === undefined) {
+    if (!U.isRecord(data)) return;
+    const id = U.idFromPayload(data);
+    if (!id || !/^\d{1,40}$/.test(id)) {
       report("SUBMIT_RESPONSE_WITHOUT_ID", { slug });
       return;
     }
 
-    const id = String(submissionId);
-    if (!/^\d{1,40}$/.test(id)) return;
-    if (slug) submissionSlugById.set(id, slug);
+    const actualSlug = slug || currentSlug() || latestSubmission?.slug || null;
+    if (!actualSlug) return;
 
+    slugBySubmissionId.set(id, actualSlug);
+    latestSubmission = {
+      slug: actualSlug,
+      submissionId: id,
+      submittedAt: new Date().toISOString()
+    };
     report("SUBMISSION_ID_CREATED", {
       submissionId: id,
-      slug: slug || null,
-      submittedAt: new Date().toISOString()
+      slug: actualSlug,
+      submittedAt: latestSubmission.submittedAt
     });
   }
 
-  function inspectCheckResponse(submissionId, data) {
-    if (!submissionId || seenSubmissionIds.has(submissionId) || !data || typeof data !== "object") return;
+  function inspectCheckResponse(data, urlSubmissionId, fallbackSlug) {
+    if (!U.looksLikeCheckPayload(data)) return;
 
-    const result = unwrapResponse(data);
-    const statusMessage = typeof result.status_msg === "string" ? result.status_msg : "";
-    const statusCode = Number(result.status_code);
-    const accepted = statusMessage.toLowerCase() === "accepted" || statusCode === 10;
-
-    if (!accepted) {
-      if (statusMessage || Number.isFinite(statusCode)) {
-        report("SUBMISSION_CHECK_RESULT", {
-          submissionId,
-          slug: submissionSlugById.get(submissionId) || null,
-          status: statusMessage || "Processing"
-        });
-      }
+    const result = U.unwrapResponse(data);
+    const payloadId = U.idFromPayload(result);
+    const submissionId = urlSubmissionId || payloadId || latestSubmission?.submissionId;
+    if (!submissionId || !/^\d{1,40}$/.test(submissionId)) {
+      report("CHECK_RESPONSE_WITHOUT_ID");
       return;
     }
 
+    const slug = slugBySubmissionId.get(submissionId) ||
+      fallbackSlug ||
+      latestSubmission?.slug ||
+      currentSlug();
+
+    const statusCode = Number(result.status_code);
+    const statusMessage = typeof result.status_msg === "string" ? result.status_msg : "";
+    const state = typeof result.state === "string" ? result.state : "";
+    const accepted = statusCode === 10 || statusMessage.toLowerCase() === "accepted";
+
+    if (!accepted) {
+      report("SUBMISSION_CHECK_RESULT", {
+        submissionId,
+        slug,
+        status: statusMessage || (state ? state.replace(/_/g, " ") : "Judging")
+      });
+      return;
+    }
+
+    if (seenSubmissionIds.has(submissionId)) return;
     seenSubmissionIds.add(submissionId);
+
     report("ACCEPTED_SUBMISSION", {
       submissionId,
-      slug: submissionSlugById.get(submissionId) || null,
+      slug,
       language: typeof result.pretty_lang === "string" ? result.pretty_lang :
         (typeof result.lang === "string" ? result.lang : null),
       runtime: typeof result.status_runtime === "string" || typeof result.status_runtime === "number"
@@ -131,24 +159,59 @@
     });
   }
 
-  function inspectResponse(kind, response, slug, submissionId) {
-    if (!response?.ok) return;
-    response.clone().json().then((data) => {
-      if (kind === "submit") inspectSubmitResponse(data, slug);
-      if (kind === "check") inspectCheckResponse(submissionId, data);
-    }).catch(() => report("OBSERVER_RESPONSE_PARSE_FAILED", { kind, slug, submissionId }));
+  function shouldInspectFallbackResponse(meta, response) {
+    if (!meta || (meta.method !== "GET" && meta.method !== "POST")) return false;
+    if (meta.kind === "submit" || meta.kind === "check") return true;
+    const contentType = response?.headers?.get?.("content-type") || "";
+    return /json/i.test(contentType) &&
+      /submission|submit|check|judge|graphql/i.test(meta.pathname);
+  }
+
+  function readResponse(response, callback) {
+    try {
+      response.clone().text().then((text) => {
+        const data = U.safeJsonParse(text);
+        if (data !== null) callback(data);
+      }).catch(() => undefined);
+    } catch {
+      // Instrumentation must never affect LeetCode's request.
+    }
   }
 
   report("OBSERVER_READY");
 
   const originalFetch = window.fetch;
   window.fetch = async function (...args) {
-    const info = getRequestInfo(args[0], args[1]);
-    if (info?.kind === "submit") report("SUBMIT_REQUEST", { slug: info.slug });
-    if (info?.kind === "check") report("SUBMISSION_CHECK_REQUEST", { submissionId: info.submissionId });
+    const input = args[0];
+    const init = args[1];
+    const meta = getRequestMeta(input, init);
+    let submittedSlug = meta?.kind === "submit" ? meta.slug : null;
+
+    try {
+      if (meta?.method === "POST" && meta.kind !== "submit") {
+        submittedSlug = recognizeSubmitBody(await getFetchBodyText(input, init), null);
+      } else if (meta?.kind === "submit") {
+        const bodyText = await getFetchBodyText(input, init);
+        const recognized = recognizeSubmitBody(bodyText, meta.slug);
+        if (recognized) submittedSlug = recognized;
+        else report("SUBMIT_REQUEST", { slug: meta.slug });
+      }
+      if (meta?.kind === "check") {
+        report("SUBMISSION_CHECK_REQUEST", { submissionId: meta.submissionId });
+      }
+    } catch {
+      // Keep the page request flowing even if its request body cannot be read.
+    }
 
     const response = await Reflect.apply(originalFetch, this, args);
-    if (info) inspectResponse(info.kind, response, info.slug, info.submissionId);
+    if (shouldInspectFallbackResponse(meta, response)) {
+      readResponse(response, (data) => {
+        if (meta?.kind === "submit") inspectSubmitResponse(data, meta.slug);
+        else if (meta?.kind === "check") inspectCheckResponse(data, meta.submissionId, null);
+        else if (U.looksLikeCheckPayload(data)) inspectCheckResponse(data, null, latestSubmission?.slug);
+        else if (submittedSlug) inspectSubmitResponse(data, submittedSlug);
+      });
+    }
     return response;
   };
 
@@ -156,30 +219,46 @@
   const originalSend = XMLHttpRequest.prototype.send;
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    this.__dsahubRequestMethod = method;
-    this.__dsahubRequestUrl = url;
-    this.__dsahubRequestInfo = getRequestInfo(url, { method });
+    this.__dsahubRequestMeta = getRequestMeta(url, { method });
     return Reflect.apply(originalOpen, this, [method, url, ...rest]);
   };
 
   XMLHttpRequest.prototype.send = function (...args) {
-    const info = this.__dsahubRequestInfo ||
-      getRequestInfo(this.__dsahubRequestUrl, { method: this.__dsahubRequestMethod, body: args[0] });
+    const meta = this.__dsahubRequestMeta;
+    let submittedSlug = meta?.kind === "submit" ? meta.slug : null;
+    try {
+      if (meta?.method === "POST" && meta.kind !== "submit" && typeof args[0] === "string") {
+        submittedSlug = recognizeSubmitBody(args[0], null);
+      } else if (meta?.kind === "submit") {
+        const recognized = recognizeSubmitBody(typeof args[0] === "string" ? args[0] : null, meta.slug);
+        if (recognized) submittedSlug = recognized;
+        else report("SUBMIT_REQUEST", { slug: meta.slug });
+      }
+      if (meta?.kind === "check") {
+        report("SUBMISSION_CHECK_REQUEST", { submissionId: meta.submissionId });
+      }
+    } catch {
+      // Ignore body parsing failures; never interfere with the site request.
+    }
 
-    if (info?.kind === "submit") report("SUBMIT_REQUEST", { slug: info.slug });
-    if (info?.kind === "check") report("SUBMISSION_CHECK_REQUEST", { submissionId: info.submissionId });
+    const shouldWatch = meta && (
+      meta.kind === "submit" ||
+      meta.kind === "check" ||
+      (meta.method === "GET" || meta.method === "POST")
+    );
 
-    if (info) {
+    if (shouldWatch) {
       this.addEventListener("load", () => {
-        try {
-          const data = this.responseType === "json" ? this.response : JSON.parse(this.responseText);
-          if (info.kind === "submit") inspectSubmitResponse(data, info.slug);
-          if (info.kind === "check") inspectCheckResponse(info.submissionId, data);
-        } catch {
-          report("OBSERVER_RESPONSE_PARSE_FAILED", info);
-        }
+        const text = U.safeXhrResponseText(this);
+        if (text === null) return;
+        const data = U.safeJsonParse(text);
+        if (meta.kind === "submit") inspectSubmitResponse(data, meta.slug);
+        else if (meta.kind === "check") inspectCheckResponse(data, meta.submissionId, null);
+        else if (U.looksLikeCheckPayload(data)) inspectCheckResponse(data, null, latestSubmission?.slug);
+        else if (submittedSlug) inspectSubmitResponse(data, submittedSlug);
       }, { once: true });
     }
+
     return Reflect.apply(originalSend, this, args);
   };
 })();
