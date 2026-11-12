@@ -66,7 +66,7 @@ export type GithubInstallationInfo = {
   id: number;
   app_id: number;
   app_slug?: string;
-  account: { login: string; type: "User" | "Organization" };
+  account: { id: number; login: string; type: "User" | "Organization" };
 };
 
 export type GithubRepositoryInfo = {
