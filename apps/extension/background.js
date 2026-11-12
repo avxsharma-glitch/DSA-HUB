@@ -51,7 +51,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.scripting.executeScript({
         target: { tabId: sender.tab.id },
         world: "MAIN",
-        files: ["interceptor.js"]
+        files: ["interceptor-utils.js", "interceptor.js"]
       }).catch((error) => {
         chrome.storage.local.set({
           lastSyncStatus: error instanceof Error ? "Could not install LeetCode observer: " + error.message : "Could not install LeetCode observer."
