@@ -29,6 +29,7 @@ test("submit payload matching requires code and language fields", () => {
 test("judge response matching supports nested and top-level payloads", () => {
   assert.equal(utils.looksLikeCheckPayload({ state: "SUCCESS", status_code: 10 }), true);
   assert.equal(utils.looksLikeCheckPayload({ data: { state: "SUCCESS", status_code: 10 } }), true);
+  assert.equal(utils.looksLikeCheckPayload({ status_msg: "Accepted", status_code: 10 }), true);
   assert.equal(utils.looksLikeCheckPayload({ status_msg: "Accepted" }), false);
 });
 
