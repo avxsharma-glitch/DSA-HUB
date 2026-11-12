@@ -63,6 +63,18 @@ export async function ensureDataIndexes(db: Db): Promise<void> {
       { userId: 1, submittedAt: -1 },
       { name: "submission_user_date" }
     ),
+    db.collection("githubInstallations").createIndex(
+      { userId: 1 },
+      { unique: true, name: "github_installation_user_unique" }
+    ),
+    db.collection("githubSyncSettings").createIndex(
+      { userId: 1 },
+      { unique: true, name: "github_sync_settings_user_unique" }
+    ),
+    db.collection("githubSyncRecords").createIndex(
+      { userId: 1, submissionId: 1 },
+      { unique: true, name: "github_sync_submission_unique" }
+    ),
     db.collection("githubSyncRecords").createIndex(
       { userId: 1, createdAt: -1 },
       { name: "github_sync_user_date" }
