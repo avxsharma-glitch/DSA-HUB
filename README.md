@@ -4,7 +4,7 @@
 
 DSAHub is an open-source workspace for tracking Data Structures & Algorithms practice across coding platforms. The project combines a web dashboard, a browser extension, platform adapters, MongoDB Atlas, and user-controlled GitHub synchronization.
 
-> **Status:** early development. GitHub OAuth, database-backed sessions, protected submission APIs, a user-scoped dashboard, and the first LeetCode accepted-submission capture path are available. The first LeetCode accepted-submission metadata capture and sync path is implemented and is awaiting real-browser validation; GeeksforGeeks capture, broader analytics, and GitHub solution sync remain future work.
+> **Status:** early development. GitHub OAuth, MongoDB-backed accounts, LeetCode accepted-submission metadata capture, an interactive analytics dashboard, and a GitHub App-based manual solution sync workspace are implemented. Automatic source-code capture and syncing, GeeksforGeeks accepted-submission capture, and organization GitHub App installations remain future work.
 
 ## Principles
 
@@ -52,14 +52,26 @@ Open http://localhost:3000. Health check: http://localhost:3000/api/health.
 - Current user API: /api/me
 - User-scoped submissions API: /api/submissions
 - User-scoped stats API: /api/stats
+- Interactive analytics page: /analytics
+- GitHub repository sync workspace: /github-sync
 - Extension key API: /api/extension-token
 - Extension ingestion API: /api/extension-submissions
 
 The normal submissions API derives user identity from the server-side Auth.js session. The extension endpoint derives user identity from a per-account bearer key whose SHA-256 hash is stored in MongoDB. Neither API accepts a client-supplied userId. Only accepted-submission metadata is stored; submitted source code and test-case contents are not collected by this extension flow.
 
+## Analytics
+
+The authenticated /analytics workspace supports 7-day, 30-day, 90-day and 1-year views, platform filtering, daily activity trends, a 365-day consistency heatmap, current/longest streaks, and difficulty/platform/language/topic breakdowns. Metrics are computed from the signed-in user's recorded submissions; missing metadata is not fabricated.
+
+## GitHub solution sync
+
+The /github-sync workspace supports GitHub App installation verification, repository selection, branch/folder configuration, manual solution-file writes, duplicate/path-collision protection, and sync history. Configure the server-side GitHub App using [GitHub App setup](docs/GITHUB_APP_SETUP.md).
+
+Manual sync requires the user to paste the source code and explicitly authorize the transfer. Source code is sent to GitHub for that request and is not saved in MongoDB. Automatic source-code capture and syncing are not enabled yet.
+
 ## MongoDB architecture
 
-Auth.js uses users, accounts, sessions, and verification_tokens. DSAHub uses profiles, connectedPlatforms, extensionTokens, submissions, githubSyncRecords, and goals. See [Data model](docs/DATA_MODEL.md).
+Auth.js uses users, accounts, sessions, and verification_tokens. DSAHub uses profiles, connectedPlatforms, extensionTokens, submissions, githubInstallations, githubSyncSettings, githubSyncRecords, and goals. See [Data model](docs/DATA_MODEL.md).
 
 ## Useful commands
 
@@ -86,6 +98,7 @@ Captured fields include problem slug/title/URL, accepted status, LeetCode submis
 
 - [Authentication setup](docs/AUTH_SETUP.md)
 - [Extension setup and data collected](docs/EXTENSION_SETUP.md)
+- [GitHub App setup](docs/GITHUB_APP_SETUP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Data model](docs/DATA_MODEL.md)
 - [Atlas setup](docs/MONGODB_ATLAS_SETUP.md)
