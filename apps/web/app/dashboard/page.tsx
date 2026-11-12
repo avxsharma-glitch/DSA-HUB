@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { signOutFromDashboard } from "./actions";
 import { ensureDataIndexes } from "@/lib/db/indexes";
-import type { SubmissionDocument, UserProfileDocument } from "@/lib/db/models";
+import type { GithubSyncRecordDocument, SubmissionDocument, UserProfileDocument } from "@/lib/db/models";
 import { getDatabase } from "@/lib/mongodb";
 import { ExtensionTokenPanel } from "./extension-token-panel";
 
@@ -23,11 +23,14 @@ export default async function DashboardPage() {
 
   const submissions = db.collection<SubmissionDocument>("submissions");
   const profiles = db.collection<UserProfileDocument>("profiles");
+  const githubSyncRecords = db.collection<GithubSyncRecordDocument>("githubSyncRecords");
 
-  const [totalSolved, recentSubmissions, profile] = await Promise.all([
+  const [totalSolved, recentSubmissions, profile, platformsWithActivity, successfulGithubSyncs] = await Promise.all([
     submissions.countDocuments({ userId }),
     submissions.find({ userId }).sort({ submittedAt: -1 }).limit(8).toArray(),
-    profiles.findOne({ userId })
+    profiles.findOne({ userId }),
+    submissions.distinct("platform", { userId }),
+    githubSyncRecords.countDocuments({ userId, status: "success" })
   ]);
 
   const displayName = profile?.displayName ?? session.user.name ?? "DSAHub member";
@@ -58,12 +61,12 @@ export default async function DashboardPage() {
           <div className="metric-value">{totalSolved}</div>
         </article>
         <article className="panel">
-          <div className="metric-label">Connected platforms</div>
-          <div className="metric-value">0</div>
+          <div className="metric-label">Platforms with activity</div>
+          <div className="metric-value">{platformsWithActivity.length}</div>
         </article>
         <article className="panel">
-          <div className="metric-label">GitHub syncs</div>
-          <div className="metric-value">0</div>
+          <div className="metric-label">Successful GitHub syncs</div>
+          <div className="metric-value">{successfulGithubSyncs}</div>
         </article>
         <article className="panel">
           <div className="metric-label">Account</div>
