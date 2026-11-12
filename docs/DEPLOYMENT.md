@@ -30,12 +30,14 @@ This guide deploys the Next.js web app to Vercel and keeps MongoDB Atlas as the 
 | Root Directory | `apps/web` |
 | Include files outside the Root Directory in the Build Step | Enabled |
 | Node.js Version | `26.x` |
-| Install Command | `npm install` (or Vercel's detected npm workspace install) |
-| Build Command | `npm run build` |
+| Install Command | `cd ../.. && npm install` |
+| Build Command | `cd ../.. && npm run build --workspace @dsahub/web` |
 | Output Directory | Default / `.next` |
 | Development Command | Default |
 
 **Why the root-directory option matters:** `apps/web` depends on the npm workspace package `@dsahub/shared`, which lives in `packages/shared` outside the Next.js app folder. Vercel must include files outside the app root so the workspace dependency is available during install and build. The app's Next.js config sets the monorepo root for Turbopack and output file tracing.
+
+The repository uses npm workspaces: `apps/web` depends on `packages/shared`, while the workspace definition is at the repository root. The commands above deliberately run npm install and the workspace build from the repository root, while Next.js still builds the `apps/web` application. Keep **Include source files outside of the Root Directory in the Build Step** enabled.
 
 The repository and app package both target Node.js 26. Vercel announced Node.js 26 LTS availability for builds and Functions on October 29, 2026. See [Vercel Node.js versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions) and [Vercel monorepos](https://vercel.com/docs/monorepos).
 
