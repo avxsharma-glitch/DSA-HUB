@@ -21,7 +21,9 @@ The application does not expose account documents or provider access tokens thro
 | connectedPlatforms | userId, platform, externalUsername | Coding-platform handles and connection state |
 | extensionTokens | userId, tokenHash, createdAt, updatedAt | One revocable browser-extension key per user; only the SHA-256 hash is stored |
 | submissions | userId, platform, externalSubmissionId, problemId, submittedAt, language, runtimeMs, memoryKb | Accepted problem metadata and optional performance metrics |
-| githubSyncRecords | userId, submissionId, repositoryFullName, filePath, status | Future solution synchronization history |
+| githubInstallations | userId, installationId, accountLogin, accountType | Verified personal-account GitHub App installation |
+| githubSyncSettings | userId, repositoryId, repositoryFullName, branch, folderPath, enabled | User-selected GitHub destination for manual solution sync |
+| githubSyncRecords | userId, submissionId, repositoryFullName, filePath, status | Attempt and result history for solution file synchronization |
 | goals | userId, period, targetSolved, startsAt, endsAt, isActive | Daily and weekly targets |
 
 ## Ownership and authorization
@@ -43,7 +45,9 @@ The application does not expose account documents or provider access tokens thro
 - Connected platforms: userId + platform (unique).
 - Extension tokens: userId (unique).
 - Submissions: userId + platform + externalSubmissionId (unique), and userId + submittedAt (descending).
-- GitHub sync records: userId + createdAt (descending).
+- GitHub installations: userId (unique).
+- GitHub sync settings: userId (unique).
+- GitHub sync records: userId + submissionId (unique), and userId + createdAt (descending).
 - Goals: userId + isActive.
 
 Indexes are created idempotently by the application. MongoDB creates the collections when the first document or index is written.
