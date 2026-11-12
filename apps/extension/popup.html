@@ -11,8 +11,9 @@
     <p class="brand">DSA<span>HUB</span></p>
     <h1>Practice companion</h1>
     <section class="block">
-      <label for="apiBase">DSAHub server (local development)</label>
-      <input id="apiBase" type="url" value="http://localhost:3000" spellcheck="false" readonly>
+      <label for="apiBase">DSAHub server URL</label>
+      <input id="apiBase" type="url" value="http://localhost:3000" placeholder="https://your-dsahub-domain.vercel.app" spellcheck="false">
+      <p class="muted input-hint">Use localhost for development or your deployed HTTPS domain. Chrome will request access only to the selected domain.</p>
       <label for="token">Extension key</label>
       <input id="token" type="password" placeholder="Paste key from your dashboard" autocomplete="off">
       <button id="connect" type="button">Save connection</button>
