@@ -18,21 +18,37 @@
 
   if (!isLeetCode) return;
 
-  function getProblemContext() {
-    const match = location.pathname.match(/\/problems\/([^/]+)/);
-    const problemId = match?.[1] ?? "";
-    const titleFromDocument = document.title.split(/\s[-|] LeetCode/i)[0].trim();
-    const titleFromHeading = document.querySelector("div[data-cy='question-title'], h1")?.textContent?.trim();
-    const title = titleFromHeading || titleFromDocument || problemId.replace(/-/g, " ");
+  function getProblemContext(preferredSlug) {
+    const currentMatch = location.pathname.match(/\/problems\/([^/]+)/);
+    const currentSlug = currentMatch?.[1] ?? "";
+    const problemId = preferredSlug || currentSlug;
+    const isCurrentProblem = !preferredSlug || preferredSlug === currentSlug;
 
-    const difficultyElement = document.querySelector("[class*='text-difficulty'], [class*='text-olive'], [class*='text-yellow'], [class*='text-pink']");
+    const titleFromDocument = isCurrentProblem
+      ? document.title.split(/\s[-|] LeetCode/i)[0].trim()
+      : "";
+    const titleFromHeading = isCurrentProblem
+      ? document.querySelector("div[data-cy='question-title'], h1")?.textContent?.trim()
+      : "";
+    const titleFromSlug = problemId
+      .split("-")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+    const title = titleFromHeading || titleFromDocument || titleFromSlug;
+
+    const difficultyElement = isCurrentProblem
+      ? document.querySelector("[class*='text-difficulty'], [class*='text-olive'], [class*='text-yellow'], [class*='text-pink']")
+      : null;
     const difficultyText = difficultyElement?.textContent?.trim();
-    const difficulty = ["Easy", "Medium", "Hard"].find((item) => item.toLowerCase() === difficultyText?.toLowerCase());
+    const difficulty = ["Easy", "Medium", "Hard"].find(
+      (item) => item.toLowerCase() === difficultyText?.toLowerCase()
+    );
 
     return {
       problemId,
       title: title.slice(0, 200),
-      problemUrl: location.origin + location.pathname,
+      problemUrl: "https://leetcode.com/problems/" + problemId + "/",
       difficulty
     };
   }
@@ -80,10 +96,10 @@
     // Read only the visible result labels and their values. Never read or send
     // the editor contents, source code, test input, or test output.
     const text = document.body?.innerText || "";
-    const runtimeMatch = text.match(/\\bRuntime\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*ms\\b/i);
-    const memoryMatch = text.match(/\\bMemory\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(KB|MB|GB)\\b/i);
-    const testMatch = text.match(/\\bAccepted\\s*([0-9]+)\\s*\\/\\s*([0-9]+)\\s*testcases?\\s*passed\\b/i);
-    const languageMatch = text.match(/\\bCode\\s*[|·]\\s*(C\\+\\+|C#|Python 3?|JavaScript|TypeScript|Java|Go|Rust|Kotlin|Swift|Ruby|PHP|C)\\b/i);
+    const runtimeMatch = text.match(/\bRuntime\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*ms\\b/i);
+    const memoryMatch = text.match(/\bMemory\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(KB|MB|GB)\\b/i);
+    const testMatch = text.match(/\bAccepted\\s*([0-9]+)\\s*\\/\\s*([0-9]+)\\s*testcases?\\s*passed\\b/i);
+    const languageMatch = text.match(/\bCode\\s*[|·]\\s*(C\\+\\+|C#|Python 3?|JavaScript|TypeScript|Java|Go|Rust|Kotlin|Swift|Ruby|PHP|C)\\b/i);
 
     return {
       language: languageMatch?.[1],
@@ -95,12 +111,14 @@
   }
 
   const seen = new Set();
+  const submissionSlugById = new Map();
 
   function handleAccepted(payload, source) {
     const submissionId = String(payload.submissionId ?? "");
     if (!/^(?:\d{1,40}|dom-\d{10,})$/.test(submissionId) || seen.has(submissionId)) return;
 
-    const context = getProblemContext();
+    const preferredSlug = typeof payload.slug === "string" ? payload.slug : submissionSlugById.get(submissionId);
+    const context = getProblemContext(preferredSlug);
     if (!context.problemId || !context.title) {
       sendStatus("Accepted result detected, but the problem URL/title could not be read.");
       return;
@@ -151,7 +169,12 @@
     }
 
     if (event.data.type === "SUBMISSION_ID_CREATED") {
-      sendStatus("LeetCode assigned submission ID " + String(event.data.payload?.submissionId || "") + ". Waiting for the judge result…");
+      const id = String(event.data.payload?.submissionId || "");
+      const slug = event.data.payload?.slug;
+      if (/^\d{1,40}$/.test(id) && typeof slug === "string" && slug) {
+        submissionSlugById.set(id, slug);
+      }
+      sendStatus("LeetCode assigned submission ID " + id + ". Waiting for the judge result…");
       return;
     }
 
@@ -161,6 +184,11 @@
     }
 
     if (event.data.type === "SUBMISSION_CHECK_RESULT") {
+      const id = String(event.data.payload?.submissionId || "");
+      const slug = event.data.payload?.slug;
+      if (/^\d{1,40}$/.test(id) && typeof slug === "string" && slug) {
+        submissionSlugById.set(id, slug);
+      }
       sendStatus("LeetCode judge response: " + String(event.data.payload?.status || "Processing"));
       return;
     }
@@ -180,9 +208,13 @@
     }
   });
 
-  // DOM fallback: on a fresh Submit click, watch for LeetCode's Accepted result
-  // banner. Use the check-request ID from performance entries when available.
-  let lastSubmitAttemptAt = 0;
+  // DOM fallback: require the result panel to change after the current
+  // submit click so an old Accepted banner cannot be re-used for a later problem.
+  let lastSubmitAttempt = null;
+
+  function getResultElement() {
+    return document.querySelector('[data-e2e-locator="submission-result"]');
+  }
 
   document.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -191,20 +223,25 @@
 
     const label = (button.innerText || button.getAttribute("aria-label") || "").trim();
     if (/^submit$/i.test(label)) {
-      lastSubmitAttemptAt = Date.now();
-      sendStatus("Submit clicked. Waiting for LeetCode to finish judging…");
+      const currentSlug = location.pathname.match(/\/problems\/([^/]+)/)?.[1] ?? "";
+      lastSubmitAttempt = {
+        startedAt: Date.now(),
+        slug: currentSlug,
+        previousResult: getResultElement()?.textContent?.trim() ?? ""
+      };
+      sendStatus("Submit clicked for " + (currentSlug || "this problem") + ". Waiting for LeetCode to finish judging…");
     }
   }, true);
 
-  function findRecentSubmissionId() {
-    const attemptStart = performance.now() - (Date.now() - lastSubmitAttemptAt) - 2000;
+  function findRecentSubmissionId(attempt) {
+    const attemptStart = performance.now() - (Date.now() - attempt.startedAt) - 2000;
     const entries = performance.getEntriesByType("resource");
     for (let index = entries.length - 1; index >= 0; index -= 1) {
       const entry = entries[index];
       if (entry.startTime < attemptStart) continue;
       try {
         const url = new URL(entry.name);
-        const match = url.pathname.match(/\/submissions\/detail\/(\d+)(?:\/check)?\/?$/i);
+        const match = url.pathname.match(/\/submissions\/detail\/(\d+)\/(?:v\d+\/)?check\/?$/i);
         if (url.hostname.endsWith("leetcode.com") && match) return match[1];
       } catch {
         // Ignore unrelated resources.
@@ -214,18 +251,22 @@
   }
 
   function scanAcceptedResult() {
-    if (!lastSubmitAttemptAt || Date.now() - lastSubmitAttemptAt > 5 * 60 * 1000) return;
+    if (!lastSubmitAttempt || Date.now() - lastSubmitAttempt.startedAt > 5 * 60 * 1000) return;
 
-    const resultElement = document.querySelector('[data-e2e-locator="submission-result"]');
-    const resultText = resultElement?.textContent?.trim() || "";
-    if (!/^Accepted\b/i.test(resultText)) return;
+    const currentSlug = location.pathname.match(/\/problems\/([^/]+)/)?.[1] ?? "";
+    if (currentSlug !== lastSubmitAttempt.slug) return;
 
-    const submissionId = findRecentSubmissionId() || "dom-" + String(lastSubmitAttemptAt);
+    const resultText = getResultElement()?.textContent?.trim() ?? "";
+    if (!resultText || resultText === lastSubmitAttempt.previousResult || !/^Accepted\b/i.test(resultText)) return;
+
+    const attempt = lastSubmitAttempt;
+    const submissionId = findRecentSubmissionId(attempt) || "dom-" + String(attempt.startedAt);
     handleAccepted({
       submissionId,
-      submittedAt: new Date(lastSubmitAttemptAt).toISOString()
-    }, "result banner");
-    lastSubmitAttemptAt = 0;
+      slug: attempt.slug,
+      submittedAt: new Date(attempt.startedAt).toISOString()
+    }, "updated result banner");
+    lastSubmitAttempt = null;
   }
 
   const resultObserver = new MutationObserver(scanAcceptedResult);
@@ -233,6 +274,18 @@
     childList: true,
     subtree: true,
     characterData: true
+  });
+
+  window.addEventListener("popstate", () => {
+    chrome.runtime.sendMessage({
+      type: "DSAHUB_PAGE_CONTEXT",
+      payload: {
+        platform: "leetcode",
+        url: location.href,
+        title: document.title,
+        capturedAt: new Date().toISOString()
+      }
+    });
   });
 
   sendStatus("LeetCode page detector active. Waiting for the submission observer…");
