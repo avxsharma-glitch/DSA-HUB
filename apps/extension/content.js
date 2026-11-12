@@ -76,6 +76,24 @@
     return (known[normalized] || String(language).trim()).slice(0, 60);
   }
 
+  function extractVisibleResultMetadata() {
+    // Read only the visible result labels and their values. Never read or send
+    // the editor contents, source code, test input, or test output.
+    const text = document.body?.innerText || "";
+    const runtimeMatch = text.match(/\\bRuntime\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*ms\\b/i);
+    const memoryMatch = text.match(/\\bMemory\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(KB|MB|GB)\\b/i);
+    const testMatch = text.match(/\\bAccepted\\s*([0-9]+)\\s*\\/\\s*([0-9]+)\\s*testcases?\\s*passed\\b/i);
+    const languageMatch = text.match(/\\bCode\\s*[|·]\\s*(C\\+\\+|C#|Python 3?|JavaScript|TypeScript|Java|Go|Rust|Kotlin|Swift|Ruby|PHP|C)\\b/i);
+
+    return {
+      language: languageMatch?.[1],
+      runtime: runtimeMatch ? Number(runtimeMatch[1]) : undefined,
+      memory: memoryMatch ? memoryMatch[1] + " " + memoryMatch[2] : undefined,
+      totalCorrect: testMatch ? Number(testMatch[1]) : undefined,
+      totalTestcases: testMatch ? Number(testMatch[2]) : undefined
+    };
+  }
+
   const seen = new Set();
 
   function handleAccepted(payload, source) {
@@ -89,16 +107,27 @@
     }
     seen.add(submissionId);
 
+    const visible = extractVisibleResultMetadata();
+    const language = normalizeLanguage(payload.language) || normalizeLanguage(visible.language);
+    const runtimeMs = parseRuntime(payload.runtime) ?? parseRuntime(visible.runtime);
+    const memoryKb = parseMemoryKb(payload.memory) ?? parseMemoryKb(visible.memory);
+    const totalCorrect = Number.isSafeInteger(payload.totalCorrect) && payload.totalCorrect >= 0
+      ? payload.totalCorrect
+      : visible.totalCorrect;
+    const totalTestcases = Number.isSafeInteger(payload.totalTestcases) && payload.totalTestcases >= 0
+      ? payload.totalTestcases
+      : visible.totalTestcases;
+
     const submission = {
       platform: "leetcode",
       externalSubmissionId: submissionId,
       ...context,
       status: "Accepted",
-      language: normalizeLanguage(payload.language),
-      runtimeMs: parseRuntime(payload.runtime),
-      memoryKb: parseMemoryKb(payload.memory),
-      totalCorrect: Number.isSafeInteger(payload.totalCorrect) && payload.totalCorrect >= 0 ? payload.totalCorrect : undefined,
-      totalTestcases: Number.isSafeInteger(payload.totalTestcases) && payload.totalTestcases >= 0 ? payload.totalTestcases : undefined,
+      language,
+      runtimeMs,
+      memoryKb,
+      totalCorrect,
+      totalTestcases,
       topics: [],
       submittedAt: typeof payload.submittedAt === "string" ? payload.submittedAt : new Date().toISOString()
     };
