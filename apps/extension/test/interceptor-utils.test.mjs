@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(new URL("../interceptor-utils.js", import.meta.url), "utf8");
-const context = vm.createContext({});
+const context = vm.createContext({ URL });
 vm.runInContext(source, context);
 const utils = context.DSAHubInterceptorUtils;
 
