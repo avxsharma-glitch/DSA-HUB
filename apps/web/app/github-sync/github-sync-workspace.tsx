@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 type Repository = {
   id: number;
@@ -158,7 +158,7 @@ export function GithubSyncWorkspace() {
     return () => { active = false; };
   }, [installation, loadRepositories]);
 
-  async function connectInstallation(event: React.FormEvent<HTMLFormElement>) {
+  async function connectInstallation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setStatus("");
@@ -195,7 +195,7 @@ export function GithubSyncWorkspace() {
     }
   }
 
-  async function saveSettings(event: React.FormEvent<HTMLFormElement>) {
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedRepository) {
       setStatus("Select a repository first.");
@@ -223,7 +223,7 @@ export function GithubSyncWorkspace() {
     }
   }
 
-  async function syncSubmission(event: React.FormEvent<HTMLFormElement>) {
+  async function syncSubmission(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedSubmission || !sourceCode.trim() || !confirmCodeSync) {
       setStatus("Select a submission, paste its solution code and confirm the code transfer.");
@@ -291,7 +291,7 @@ export function GithubSyncWorkspace() {
               <li>Generate an app private key and configure <code>GITHUB_APP_ID</code> and <code>GITHUB_APP_PRIVATE_KEY</code> on the DSAHub server.</li>
               <li>Restart the DSAHub server after setting environment variables.</li>
             </ol>
-            <p className="fine-print">Never paste the private key into this page or commit it to Git.</p>
+            <p className="fine-print">This version supports personal-account installations tied to the GitHub account used for DSAHub sign-in. Organization installations are not yet supported. Never paste the private key into this page or commit it to Git.</p>
           </div>
         </section>
       ) : null}
