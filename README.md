@@ -305,6 +305,10 @@ LeetCode does not provide a stable, documented public submission API for extensi
 
 The extension does not read or send the source-code field from a submit request. It only checks that the field exists to recognise a submission event.
 
+## Deployment
+
+The deployment guide covers the Vercel monorepo configuration, Node.js 26, production environment variables, GitHub OAuth callback URL, Atlas network access, hosted extension setup and production smoke tests. See [Deployment](docs/DEPLOYMENT.md).
+
 ## GitHub repository sync setup
 
 GitHub repository writes require a separately configured GitHub App.
