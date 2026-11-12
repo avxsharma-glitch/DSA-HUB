@@ -7,7 +7,8 @@
   window[marker] = true;
 
   const seenSubmissionIds = new Set();
-  const checkPath = /\/submissions\/detail\/(\d+)(?:\/check)?\/?$/i;
+  const submissionSlugById = new Map();
+  const checkPath = /\/submissions\/detail\/(\d+)\/(?:v\d+\/)?check\/?$/i;
   const submitPath = /\/problems\/([^/]+)\/submit\/?$/i;
 
   function report(type, payload = {}) {
@@ -18,7 +19,19 @@
     }, window.location.origin);
   }
 
-  function getRequestInfo(input) {
+  function parseSubmitBody(body) {
+    if (!body) return null;
+    if (typeof body === "object" && !(body instanceof FormData)) return body;
+    if (typeof body !== "string") return null;
+    try {
+      const parsed = JSON.parse(body);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function getRequestInfo(input, init) {
     try {
       let rawUrl = input;
       if (typeof input !== "string") {
@@ -32,26 +45,49 @@
 
       const checkMatch = url.pathname.match(checkPath);
       if (checkMatch) return { kind: "check", submissionId: checkMatch[1] };
+
       const submitMatch = url.pathname.match(submitPath);
       if (submitMatch) return { kind: "submit", slug: submitMatch[1] };
+
+      // Fallback for LeetCode endpoint path changes: identify only the
+      // submit request shape, without reading or forwarding the code value.
+      const method = String(init?.method || "GET").toUpperCase();
+      if (method === "POST") {
+        const body = parseSubmitBody(init?.body);
+        const hasCodeField = body && ("typed_code" in body || "code" in body);
+        const hasLanguageField = body && ("lang" in body || "lang_id" in body);
+        const problemMatch = window.location.pathname.match(/\/problems\/([^/]+)/);
+        if (hasCodeField && hasLanguageField && problemMatch) {
+          return { kind: "submit", slug: problemMatch[1] };
+        }
+      }
       return null;
     } catch {
       return null;
     }
   }
 
+  function unwrapResponse(data) {
+    if (!data || typeof data !== "object") return data;
+    if (data.data && typeof data.data === "object") return data.data;
+    return data;
+  }
+
   function inspectSubmitResponse(data, slug) {
-    const result = data && typeof data === "object" && data.data && typeof data.data === "object"
-      ? data.data
-      : data;
+    const result = unwrapResponse(data);
     const submissionId = result && (result.submission_id ?? result.submissionId);
     if (submissionId === null || submissionId === undefined) {
       report("SUBMIT_RESPONSE_WITHOUT_ID", { slug });
       return;
     }
+
+    const id = String(submissionId);
+    if (!/^\d{1,40}$/.test(id)) return;
+    if (slug) submissionSlugById.set(id, slug);
+
     report("SUBMISSION_ID_CREATED", {
-      submissionId: String(submissionId),
-      slug,
+      submissionId: id,
+      slug: slug || null,
       submittedAt: new Date().toISOString()
     });
   }
@@ -59,7 +95,7 @@
   function inspectCheckResponse(submissionId, data) {
     if (!submissionId || seenSubmissionIds.has(submissionId) || !data || typeof data !== "object") return;
 
-    const result = data.data && typeof data.data === "object" ? data.data : data;
+    const result = unwrapResponse(data);
     const statusMessage = typeof result.status_msg === "string" ? result.status_msg : "";
     const statusCode = Number(result.status_code);
     const accepted = statusMessage.toLowerCase() === "accepted" || statusCode === 10;
@@ -68,7 +104,8 @@
       if (statusMessage || Number.isFinite(statusCode)) {
         report("SUBMISSION_CHECK_RESULT", {
           submissionId,
-          status: statusMessage || (Number.isFinite(statusCode) ? "Processing" : "Unknown")
+          slug: submissionSlugById.get(submissionId) || null,
+          status: statusMessage || "Processing"
         });
       }
       return;
@@ -77,6 +114,7 @@
     seenSubmissionIds.add(submissionId);
     report("ACCEPTED_SUBMISSION", {
       submissionId,
+      slug: submissionSlugById.get(submissionId) || null,
       language: typeof result.pretty_lang === "string" ? result.pretty_lang :
         (typeof result.lang === "string" ? result.lang : null),
       runtime: typeof result.status_runtime === "string" || typeof result.status_runtime === "number"
@@ -105,7 +143,7 @@
 
   const originalFetch = window.fetch;
   window.fetch = async function (...args) {
-    const info = getRequestInfo(args[0]);
+    const info = getRequestInfo(args[0], args[1]);
     if (info?.kind === "submit") report("SUBMIT_REQUEST", { slug: info.slug });
     if (info?.kind === "check") report("SUBMISSION_CHECK_REQUEST", { submissionId: info.submissionId });
 
@@ -118,12 +156,16 @@
   const originalSend = XMLHttpRequest.prototype.send;
 
   XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    this.__dsahubRequestInfo = getRequestInfo(url);
+    this.__dsahubRequestMethod = method;
+    this.__dsahubRequestUrl = url;
+    this.__dsahubRequestInfo = getRequestInfo(url, { method });
     return Reflect.apply(originalOpen, this, [method, url, ...rest]);
   };
 
   XMLHttpRequest.prototype.send = function (...args) {
-    const info = this.__dsahubRequestInfo;
+    const info = this.__dsahubRequestInfo ||
+      getRequestInfo(this.__dsahubRequestUrl, { method: this.__dsahubRequestMethod, body: args[0] });
+
     if (info?.kind === "submit") report("SUBMIT_REQUEST", { slug: info.slug });
     if (info?.kind === "check") report("SUBMISSION_CHECK_REQUEST", { submissionId: info.submissionId });
 
