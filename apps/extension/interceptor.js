@@ -46,12 +46,12 @@
         init?.method || (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET")
       ).toUpperCase();
 
-      const checkMatch = url.pathname.match(checkPath);
-      if (checkMatch) return { kind: "check", method, submissionId: checkMatch[1], pathname: url.pathname };
+      const checkSubmissionId = U.submissionIdFromCheckPath(url.pathname);
+      if (checkSubmissionId) return { kind: "check", method, submissionId: checkSubmissionId, pathname: url.pathname };
 
-      const submitMatch = url.pathname.match(submitPath);
-      if (submitMatch && method === "POST") {
-        return { kind: "submit", method, slug: submitMatch[1], pathname: url.pathname };
+      const submitSlug = U.submitSlugFromPath(url.pathname);
+      if (submitSlug && method === "POST") {
+        return { kind: "submit", method, slug: submitSlug, pathname: url.pathname };
       }
 
       return { kind: "other", method, pathname: url.pathname };
