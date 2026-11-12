@@ -159,11 +159,19 @@
     });
   }
 
-  function shouldInspectFallbackResponse(meta, response) {
+  function shouldInspectFallbackResponse(meta, response, recognizedSubmitBody) {
     if (!meta || (meta.method !== "GET" && meta.method !== "POST")) return false;
     if (meta.kind === "submit" || meta.kind === "check") return true;
+
     const contentType = response?.headers?.get?.("content-type") || "";
-    return /json/i.test(contentType) &&
+    if (!/json/i.test(contentType)) return false;
+
+    const contentLength = Number(response.headers.get("content-length") || "0");
+    if (contentLength > 512_000) return false;
+
+    // URL-independent fallback: a recognised submit body is paired with its
+    // response even if LeetCode moves the endpoint to a differently named path.
+    return Boolean(recognizedSubmitBody) ||
       /submission|submit|check|judge|graphql/i.test(meta.pathname);
   }
 
@@ -204,7 +212,7 @@
     }
 
     const response = await Reflect.apply(originalFetch, this, args);
-    if (shouldInspectFallbackResponse(meta, response)) {
+    if (shouldInspectFallbackResponse(meta, response, submittedSlug)) {
       readResponse(response, (data) => {
         if (meta?.kind === "submit") inspectSubmitResponse(data, meta.slug);
         else if (meta?.kind === "check") inspectCheckResponse(data, meta.submissionId, null);
