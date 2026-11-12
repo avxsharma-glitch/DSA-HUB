@@ -62,7 +62,7 @@ It does not send source code, input, expected output, actual output, or the cont
 
 ## Current limitations
 
-- Local development endpoint only: http://localhost:3000.
+- The popup can target localhost or a user-selected HTTPS DSAHub origin. Chrome host permission is requested for the selected hosted origin.
 - LeetCode accepted-submission capture only.
 - GeeksforGeeks accepted-submission capture is not implemented.
 - The extension does not sync solution files to GitHub.
