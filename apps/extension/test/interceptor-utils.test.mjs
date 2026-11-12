@@ -1,10 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
-const here = fileURLToPath(new URL(".", import.meta.url));
 const source = readFileSync(new URL("../interceptor-utils.js", import.meta.url), "utf8");
 const context = vm.createContext({});
 vm.runInContext(source, context);
@@ -45,4 +43,23 @@ test("XHR response reader never throws for unreadable response types", () => {
   assert.equal(utils.safeXhrResponseText({ responseType: "blob", get responseText() { throw new Error("invalid state"); } }), null);
   assert.equal(utils.safeXhrResponseText({ responseType: "json", response: { status_code: 10 } }), '{"status_code":10}');
   assert.equal(utils.safeXhrResponseText({ responseType: "text", responseText: '{"ok":true}' }), '{"ok":true}');
+});
+
+test("submit path matcher extracts the slug", () => {
+  assert.equal(utils.submitSlugFromPath("/problems/two-sum/submit/"), "two-sum");
+  assert.equal(utils.submitSlugFromPath("/problems/valid-parentheses/submit"), "valid-parentheses");
+  assert.equal(utils.submitSlugFromPath("/problems/valid-parentheses/"), null);
+});
+
+test("check path matcher supports standard and versioned routes", () => {
+  assert.equal(utils.submissionIdFromCheckPath("/submissions/detail/12345/check/"), "12345");
+  assert.equal(utils.submissionIdFromCheckPath("/submissions/detail/98765/v2/check/"), "98765");
+  assert.equal(utils.submissionIdFromCheckPath("/submissions/detail/not-an-id/check/"), null);
+});
+
+test("extension entry scripts parse as JavaScript", () => {
+  for (const name of ["../content.js", "../interceptor.js", "../interceptor-utils.js", "../background.js", "../popup.js"]) {
+    const script = readFileSync(new URL(name, import.meta.url), "utf8");
+    assert.doesNotThrow(() => new vm.Script(script, { filename: name }), name + " should parse");
+  }
 });
