@@ -49,9 +49,9 @@
 
   function parseMemoryKb(value) {
     if (value === null || value === undefined) return undefined;
-    // LeetCode commonly returns its raw memory metric as a numeric MB value.
-    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-      return Math.round(value * 1024);
+    // LeetCode can use zero as an empty/unavailable sentinel.
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value > 0 ? Math.round(value * 1024) : undefined;
     }
     const text = String(value).trim();
     const match = text.match(/[0-9]+(?:\.[0-9]+)?/);
