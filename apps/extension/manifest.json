@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "DSAHub Companion",
-  "version": "0.3.0",
-  "description": "Track accepted LeetCode submissions and sync metadata to DSAHub.",
+  "version": "0.4.0",
+  "description": "Track accepted LeetCode submissions and sync metadata to your DSAHub server.",
   "permissions": [
     "storage",
     "scripting"
@@ -30,5 +30,8 @@
   ],
   "action": {
     "default_popup": "popup.html"
-  }
+  },
+  "optional_host_permissions": [
+    "https://*/*"
+  ]
 }
