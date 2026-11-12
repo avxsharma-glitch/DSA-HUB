@@ -61,6 +61,28 @@ export interface SubmissionDocument extends Document {
   createdAt: Date;
 }
 
+export interface GithubInstallationDocument extends Document {
+  _id?: ObjectId;
+  userId: string;
+  installationId: number;
+  accountLogin: string;
+  accountType: "User" | "Organization";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface GithubSyncSettingsDocument extends Document {
+  _id?: ObjectId;
+  userId: string;
+  installationId: number;
+  repositoryId: number;
+  repositoryFullName: string;
+  branch: string;
+  folderPath: string;
+  enabled: boolean;
+  updatedAt: Date;
+}
+
 export interface GithubSyncRecordDocument extends Document {
   _id?: ObjectId;
   userId: string;
