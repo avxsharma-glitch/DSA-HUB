@@ -47,7 +47,7 @@
 
   function looksLikeCheckPayload(value) {
     const payload = unwrapResponse(value);
-    return isRecord(payload) && "state" in payload && "status_code" in payload;
+    return isRecord(payload) && "status_code" in payload && ("state" in payload || "status_msg" in payload);
   }
 
   function idFromPayload(value) {
