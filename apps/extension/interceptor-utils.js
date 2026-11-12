@@ -12,6 +12,16 @@
     return match ? match[1] : null;
   }
 
+  function submitSlugFromPath(pathname) {
+    const match = String(pathname).match(/\/problems\/([a-z0-9-]+)\/submit\/?$/i);
+    return match ? match[1] : null;
+  }
+
+  function submissionIdFromCheckPath(pathname) {
+    const match = String(pathname).match(/\/submissions\/detail\/(\d+)\/(?:v\d+\/)?check\/?$/i);
+    return match ? match[1] : null;
+  }
+
   function safeJsonParse(text) {
     try {
       return JSON.parse(text);
@@ -63,6 +73,8 @@
   globalThis.DSAHubInterceptorUtils = Object.freeze({
     pathnameOf,
     slugFromPath,
+    submitSlugFromPath,
+    submissionIdFromCheckPath,
     safeJsonParse,
     isRecord,
     unwrapResponse,
