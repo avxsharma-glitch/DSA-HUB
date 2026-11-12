@@ -130,9 +130,9 @@ export async function POST(request: Request) {
         $set: {
           status: "success",
           syncedAt: new Date(),
-          updatedAt: new Date(),
-          errorCode: undefined
-        }
+          updatedAt: new Date()
+        },
+        $unset: { errorCode: "" }
       }
     );
 
