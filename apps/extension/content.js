@@ -96,10 +96,10 @@
     // Read only the visible result labels and their values. Never read or send
     // the editor contents, source code, test input, or test output.
     const text = document.body?.innerText || "";
-    const runtimeMatch = text.match(/\bRuntime\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*ms\\b/i);
-    const memoryMatch = text.match(/\bMemory\\s*[:：]?\\s*([0-9]+(?:\\.[0-9]+)?)\\s*(KB|MB|GB)\\b/i);
-    const testMatch = text.match(/\bAccepted\\s*([0-9]+)\\s*\\/\\s*([0-9]+)\\s*testcases?\\s*passed\\b/i);
-    const languageMatch = text.match(/\bCode\\s*[|·]\\s*(C\\+\\+|C#|Python 3?|JavaScript|TypeScript|Java|Go|Rust|Kotlin|Swift|Ruby|PHP|C)\\b/i);
+    const runtimeMatch = text.match(/\bRuntime\s*[:：]?\s*([0-9]+(?:\.[0-9]+)?)\s*ms\b/i);
+    const memoryMatch = text.match(/\bMemory\s*[:：]?\s*([0-9]+(?:\.[0-9]+)?)\s*(KB|MB|GB)\b/i);
+    const testMatch = text.match(/\bAccepted\s*([0-9]+)\s*\/\s*([0-9]+)\s*testcases?\s*passed\b/i);
+    const languageMatch = text.match(/\bCode\s*[|·]\s*(C\+\+|C#|Python 3?|JavaScript|TypeScript|Java|Go|Rust|Kotlin|Swift|Ruby|PHP|C)\b/i);
 
     return {
       language: languageMatch?.[1],
