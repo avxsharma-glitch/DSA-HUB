@@ -78,7 +78,12 @@ export default async function DashboardPage() {
               <div className="rowitem" key={submission._id?.toString()}>
                 <div>
                   <strong>{submission.title}</strong>
-                  <div className="fine-print">{submission.platform} · {submission.language ?? "Language unavailable"}{submission.runtimeMs !== undefined ? ` · ${submission.runtimeMs} ms` : ""}{submission.memoryKb !== undefined ? ` · ${(submission.memoryKb / 1024).toFixed(2)} MB` : ""}</div>
+                  <div className="fine-print">
+                    {submission.platform} · {submission.language ?? "Language unavailable"}
+                    {typeof submission.runtimeMs === "number" && Number.isFinite(submission.runtimeMs) ? ` · ${submission.runtimeMs} ms` : ""}
+                    {typeof submission.memoryKb === "number" && Number.isFinite(submission.memoryKb) ? ` · ${(submission.memoryKb / 1024).toFixed(2)} MB` : ""}
+                    {typeof submission.totalCorrect === "number" && typeof submission.totalTestcases === "number" ? ` · ${submission.totalCorrect}/${submission.totalTestcases} tests` : ""}
+                  </div>
                 </div>
                 <span>{submission.difficulty ?? "Unspecified"}</span>
               </div>
